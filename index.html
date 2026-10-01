@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Twin Terminal</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+
+<style>
+:root{
+  --bg:#07070c;
+  --bg-2:#0b0b12;
+  --panel:#0e0e17;
+  --panel-2:#12121c;
+  --line:#1c1c2a;
+  --line-2:#252536;
+  --text:#e8e8f0;
+  --muted:#7a7a90;
+  --muted-2:#555568;
+  --accent:#8b5cf6;
+  --accent-2:#a855f7;
+  --accent-3:#c084fc;
+  --green:#4ade80;
+  --red:#fb7185;
+  --yellow:#fbbf24;
+  --blue:#60a5fa;
+  --cyan:#22d3ee;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  width:100%;height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:14px;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+input,textarea{font-family:inherit}
+
+/* ───────── Login ───────── */
+
+.login{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 50% 15%,rgba(139,92,246,.22),transparent 45%),
+    radial-gradient(circle at 80% 90%,rgba(34,211,238,.10),transparent 45%),
+    var(--bg);
+  padding:20px;
+}
+.login.hide{display:none}
+
+.login-box{
+  width:min(430px,100%);
+  padding:36px 32px;
+  background:rgba(16,16,26,.85);
+  border:1px solid rgba(168,85,247,.22);
+  border-radius:20px;
+  box-shadow:0 30px 100px rgba(0,0,0,.7),0 0 80px rgba(124,58,237,.10);
+  backdrop-filter:blur(24px);
+}
+.logo{
+  width:60px;height:60px;border-radius:17px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#7c3aed,#a855f7);
+  font-size:28px;
+  box-shadow:0 10px 40px rgba(124,58,237,.4);
+}
+.login h1{margin:22px 0 8px;font-size:26px;font-weight:800;letter-spacing:-.5px}
+.login p{margin:0 0 26px;color:var(--muted);font-size:14px}
+.password{
+  width:100%;padding:15px 16px;
+  border:1px solid var(--line-2);border-radius:12px;
+  background:#0a0a12;color:#fff;outline:none;font-size:15px;
+  transition:.15s;
+}
+.password:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.15)}
+.connect{
+  width:100%;margin-top:14px;padding:15px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:#fff;font-weight:700;font-size:15px;
+  transition:.2s;
+}
+.connect:hover{transform:translateY(-1px);box-shadow:0 12px 35px rgba(124,58,237,.35)}
+.connect:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.error{color:var(--red);margin-top:12px;font-size:13px;display:none}
+.error.show{display:block}
+
+/* ───────── App ───────── */
+
+.app{display:none;width:100%;height:100%}
+.app.show{display:flex}
+
+/* Sidebar */
+
+.sidebar{
+  width:240px;flex-shrink:0;
+  background:linear-gradient(180deg,#0a0a12,#08080e);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  padding:18px 12px;
+}
+.brand{display:flex;align-items:center;gap:12px;padding:6px 10px 22px}
+.brand-icon{
+  width:38px;height:38px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#7c3aed,#a855f7);
+  font-size:18px;
+  box-shadow:0 6px 20px rgba(124,58,237,.35);
+}
+.brand-title{font-weight:800;font-size:14px;letter-spacing:-.2px}
+.brand-sub{font-size:10.5px;color:var(--muted-2);margin-top:2px;letter-spacing:.3px}
+
+.nav-title{
+  padding:14px 12px 8px;
+  font-size:10px;color:var(--muted-2);
+  text-transform:uppercase;letter-spacing:1.6px;font-weight:700;
+}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 12px;margin-bottom:3px;
+  color:var(--muted);border-radius:10px;
+  font-size:13px;font-weight:500;
+  cursor:pointer;user-select:none;
+  transition:.15s;
+}
+.nav-item .ic{width:18px;text-align:center;font-size:15px}
+.nav-item:hover{background:rgba(255,255,255,.035);color:var(--text)}
+.nav-item.active{
+  color:#fff;
+  background:linear-gradient(135deg,rgba(124,58,237,.20),rgba(168,85,247,.08));
+  border:1px solid rgba(124,58,237,.25);
+}
+.nav-item.active .ic{color:var(--accent-3)}
+
+.sidebar-bottom{margin-top:auto}
+
+.stat-card{
+  padding:13px 13px 11px;
+  border-radius:13px;
+  background:linear-gradient(180deg,#0f0f19,#0b0b12);
+  border:1px solid var(--line);
+}
+.stat-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--muted);margin:7px 0;
+}
+.stat-row strong{color:var(--text);font-weight:600;font-size:11px}
+.stat-bar{height:5px;border-radius:3px;background:#171725;overflow:hidden;margin-top:4px}
+.stat-bar > div{height:100%;border-radius:3px;transition:width .4s ease;background:linear-gradient(90deg,#7c3aed,#a855f7)}
+.stat-bar.warn > div{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.stat-bar.danger > div{background:linear-gradient(90deg,#ef4444,#fb7185)}
+
+.status-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 8px var(--green);
+  display:inline-block;margin-right:6px;vertical-align:middle;
+}
+
+/* Main */
+
+.main{
+  min-width:0;flex:1;display:flex;flex-direction:column;
+  background:
+    radial-gradient(circle at 75% -10%,rgba(124,58,237,.09),transparent 40%),
+    var(--bg);
+}
+
+.header{
+  height:62px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;
+  border-bottom:1px solid var(--line);
+  background:rgba(10,10,16,.85);
+  backdrop-filter:blur(16px);
+}
+.header-left{display:flex;align-items:center;gap:12px;min-width:0}
+.menu{display:none;font-size:20px;padding:4px 8px;border-radius:8px}
+.server-name{font-size:14px;font-weight:700;letter-spacing:-.2px}
+.server-path{color:var(--muted-2);font-size:11px;margin-top:2px;font-family:ui-monospace,monospace}
+.header-right{display:flex;align-items:center;gap:10px}
+
+.pill{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 11px;border-radius:8px;
+  background:rgba(74,222,128,.07);
+  border:1px solid rgba(74,222,128,.18);
+  color:var(--green);
+  font-size:11px;font-weight:600;
+}
+.pill.off{background:rgba(251,113,133,.07);border-color:rgba(251,113,133,.2);color:var(--red)}
+.pill.off .dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.pill .dot{width:6px;height:6px}
+
+.icon-btn{
+  width:34px;height:34px;border-radius:9px;
+  border:1px solid var(--line-2);background:#101019;
+  color:var(--muted);display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:.15s;
+}
+.icon-btn:hover{color:#fff;border-color:var(--accent);background:rgba(124,58,237,.1)}
+
+/* Views */
+
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.active{display:flex}
+
+/* Terminal */
+
+.tabs-bar{
+  height:42px;flex-shrink:0;display:flex;align-items:center;
+  padding:0 10px;gap:4px;
+  background:#0a0a12;
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;
+}
+.tabs-bar::-webkit-scrollbar{display:none}
+
+.tab{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:8px;
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--muted);font-size:12px;
+  cursor:pointer;white-space:nowrap;
+  transition:.15s;flex-shrink:0;
+  max-width:200px;
+}
+.tab:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.tab.active{
+  background:linear-gradient(180deg,rgba(124,58,237,.18),rgba(124,58,237,.08));
+  border-color:rgba(124,58,237,.3);
+  color:#fff;
+}
+.tab .tdot{width:6px;height:6px;border-radius:50%;background:var(--muted-2);flex-shrink:0}
+.tab.ready .tdot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.tab.error .tdot{background:var(--red);box-shadow:0 0 6px var(--red)}
+.tab-title{overflow:hidden;text-overflow:ellipsis}
+.tab-close{
+  margin-left:4px;width:16px;height:16px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:4px;font-size:14px;color:var(--muted-2);
+}
+.tab-close:hover{background:rgba(251,113,133,.15);color:var(--red)}
+
+.tab-new{
+  width:30px;height:30px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:8px;color:var(--muted);font-size:18px;
+  transition:.15s;
+}
+.tab-new:hover{background:rgba(124,58,237,.15);color:var(--accent-3)}
+
+.terms{
+  flex:1;min-height:0;position:relative;
+  background:#08080d;
+}
+.term-wrap{
+  position:absolute;inset:0;
+  padding:10px;
+  display:none;
+}
+.term-wrap.active{display:block}
+.term-wrap .xterm{height:100%}
+
+.term-empty{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:14px;color:var(--muted-2);
+}
+.term-empty .big{font-size:44px;opacity:.5}
+.term-empty button{
+  padding:10px 18px;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:#fff;font-weight:600;font-size:13px;
+}
+
+/* Files */
+
+.files{
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  padding:14px;
+  gap:12px;
+}
+
+.files-toolbar{
+  display:flex;align-items:center;gap:8px;
+  background:linear-gradient(180deg,#0f0f1a,#0b0b12);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  flex-wrap:wrap;
+}
+.crumbs{
+  flex:1;min-width:0;
+  display:flex;align-items:center;gap:2px;
+  font-size:12px;color:var(--muted);
+  overflow-x:auto;scrollbar-width:none;
+  font-family:ui-monospace,monospace;
+}
+.crumbs::-webkit-scrollbar{display:none}
+.crumb{
+  padding:5px 8px;border-radius:6px;
+  cursor:pointer;white-space:nowrap;
+}
+.crumb:hover{background:rgba(124,58,237,.12);color:var(--accent-3)}
+.crumb-sep{color:var(--muted-2)}
+
+.tool-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 11px;border-radius:8px;
+  background:#101019;border:1px solid var(--line-2);
+  color:var(--muted);font-size:12px;font-weight:500;
+  transition:.15s;
+}
+.tool-btn:hover{color:#fff;border-color:var(--accent);background:rgba(124,58,237,.1)}
+.tool-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(251,113,133,.1)}
+
+.files-list{
+  flex:1;min-height:0;
+  overflow:auto;
+  background:#0a0a12;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.file-row{
+  display:grid;
+  grid-template-columns:1fr 100px 150px 44px;
+  gap:10px;align-items:center;
+  padding:10px 14px;
+  border-bottom:1px solid #12121c;
+  cursor:pointer;font-size:13px;
+  transition:.1s;
+}
+.file-row:hover{background:rgba(124,58,237,.06)}
+.file-row:last-child{border-bottom:0}
+.file-row .fname{display:flex;align-items:center;gap:10px;min-width:0}
+.file-row .ficon{font-size:15px;width:20px;text-align:center}
+.file-row .fname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-row .fsize,.file-row .fmtime{color:var(--muted-2);font-size:11px;font-family:ui-monospace,monospace}
+.file-row .fdel{
+  text-align:center;color:var(--muted-2);
+  border-radius:6px;padding:3px;width:26px;
+  opacity:0;transition:.15s;
+}
+.file-row:hover .fdel{opacity:1}
+.file-row .fdel:hover{background:rgba(251,113,133,.15);color:var(--red)}
+
+.file-empty{
+  padding:50px 20px;text-align:center;color:var(--muted-2);font-size:13px;
+}
+
+/* Editor overlay */
+
+.editor{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(5,5,10,.85);
+  backdrop-filter:blur(12px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.editor.show{display:flex}
+.editor-box{
+  width:min(1100px,100%);
+  height:min(800px,100%);
+  background:#0b0b12;
+  border:1px solid var(--line-2);
+  border-radius:14px;
+  display:flex;flex-direction:column;
+  box-shadow:0 30px 100px rgba(0,0,0,.7);
+}
+.editor-head{
+  height:52px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  border-bottom:1px solid var(--line);
+}
+.editor-path{font-family:ui-monospace,monospace;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editor-actions{display:flex;gap:8px}
+.editor-body{flex:1;min-height:0;position:relative}
+.editor textarea{
+  width:100%;height:100%;
+  background:#08080d;color:#e8e8f0;
+  border:0;outline:none;resize:none;
+  padding:16px;
+  font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  font-size:13px;line-height:1.6;
+  tab-size:4;
+}
+.btn-primary{
+  padding:8px 16px;border-radius:8px;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:#fff;font-size:12.5px;font-weight:600;
+}
+.btn-primary:hover{filter:brightness(1.1)}
+
+/* Settings */
+
+.settings{
+  flex:1;min-height:0;overflow:auto;
+  padding:22px;
+}
+.settings h2{font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px}
+.settings p.lead{color:var(--muted);font-size:13px;margin-bottom:22px}
+
+.card{
+  background:linear-gradient(180deg,#0f0f19,#0b0b12);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:16px;
+  max-width:720px;
+}
+.card h3{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:16px;font-weight:700}
+.field{display:flex;align-items:center;justify-content:space-between;padding:10px 0;gap:12px;border-bottom:1px solid #141420}
+.field:last-child{border-bottom:0}
+.field label{font-size:13px;color:var(--text)}
+.field .hint{font-size:11px;color:var(--muted-2);margin-top:2px}
+.field select,.field input[type="range"]{
+  background:#0a0a12;color:#fff;border:1px solid var(--line-2);
+  border-radius:8px;padding:7px 10px;font-size:12.5px;outline:none;
+}
+.field input[type="range"]{width:180px;padding:0}
+.field .val{color:var(--accent-3);font-family:ui-monospace,monospace;font-size:12px;min-width:36px;text-align:right}
+.field select:focus,.field input:focus{border-color:var(--accent)}
+
+.kv{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;font-size:12.5px}
+.kv dt{color:var(--muted)}
+.kv dd{color:var(--text);font-family:ui-monospace,monospace}
+
+/* Toast */
+
+.toast{
+  position:fixed;bottom:22px;right:22px;
+  padding:12px 18px;border-radius:10px;
+  background:#15151f;border:1px solid var(--line-2);
+  font-size:13px;color:#fff;
+  opacity:0;transform:translateY(10px);
+  transition:.25s;z-index:200;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{border-color:rgba(251,113,133,.4);color:var(--red)}
+
+/* Mobile */
+
+@media(max-width:760px){
+  .sidebar{position:fixed;left:-250px;top:0;bottom:0;z-index:60;transition:.25s;box-shadow:0 0 60px rgba(0,0,0,.5)}
+  .sidebar.open{left:0}
+  .menu{display:block}
+  .header{padding:0 12px}
+  .pill span:last-child{display:none}
+  .pill{padding:6px 8px}
+  .files{padding:10px;gap:8px}
+  .file-row{grid-template-columns:1fr 60px 40px;gap:8px}
+  .file-row .fmtime{display:none}
+  .editor{padding:0}
+  .editor-box{border-radius:0;height:100%;max-height:100%;width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- ───────── Login ───────── -->
+
+<div class="login" id="login">
+  <div class="login-box">
+    <div class="logo">⚡</div>
+    <h1>Twin Terminal</h1>
+    <p>Secure web terminal &amp; file manager for your container.</p>
+
+    <input id="password" class="password" type="password"
+           placeholder="Enter terminal password" autocomplete="current-password" autofocus>
+
+    <button class="connect" id="connectBtn">Connect</button>
+    <div class="error" id="error">Invalid password</div>
+  </div>
+</div>
+
+
+<!-- ───────── App ───────── -->
+
+<div class="app" id="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">Twin Terminal</div>
+        <div class="brand-sub">v2 · Alpine Linux</div>
+      </div>
+    </div>
+
+    <div class="nav-title">Workspace</div>
+    <div class="nav-item active" data-view="terminal"><span class="ic">⌘</span>Terminal</div>
+    <div class="nav-item" data-view="files"><span class="ic">◈</span>Files</div>
+    <div class="nav-item" data-view="settings"><span class="ic">⚙</span>Settings</div>
+
+    <div class="sidebar-bottom">
+      <div class="stat-card">
+        <div class="stat-row">
+          <span>Status</span>
+          <strong><span class="status-dot"></span>Online</strong>
+        </div>
+
+        <div class="stat-row">
+          <span>RAM</span>
+          <strong id="s-mem">-- / --</strong>
+        </div>
+        <div class="stat-bar" id="s-mem-bar"><div style="width:0%"></div></div>
+
+        <div class="stat-row" style="margin-top:10px">
+          <span>CPU</span>
+          <strong id="s-cpu">--</strong>
+        </div>
+        <div class="stat-bar" id="s-cpu-bar"><div style="width:0%"></div></div>
+
+        <div class="stat-row" style="margin-top:10px">
+          <span>Traffic</span>
+          <strong id="s-tr">-- / --</strong>
+        </div>
+        <div class="stat-bar" id="s-tr-bar"><div style="width:0%"></div></div>
+      </div>
+    </div>
+  </aside>
+
+
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <button class="menu" id="menuBtn">☰</button>
+        <div>
+          <div class="server-name">Twin Linux</div>
+          <div class="server-path" id="hdr-path">/data</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="pill" id="conn-pill">
+          <span class="dot"></span>
+          <span>Connected</span>
+        </div>
+        <button class="icon-btn" id="logoutBtn" title="Logout">⏻</button>
+      </div>
+    </header>
+
+    <!-- Terminal view -->
+    <section class="view active" id="view-terminal">
+      <div class="tabs-bar" id="tabsBar">
+        <div class="tab-new" id="tabNew" title="New terminal">+</div>
+      </div>
+      <div class="terms" id="terms"></div>
+      <div class="term-empty" id="termEmpty" style="display:none">
+        <div class="big">⌘</div>
+        <div>No terminals open</div>
+        <button id="termEmptyNew">Open a terminal</button>
+      </div>
+    </section>
+
+    <!-- Files view -->
+    <section class="view" id="view-files">
+      <div class="files">
+        <div class="files-toolbar">
+          <div class="crumbs" id="crumbs"></div>
+          <button class="tool-btn" id="btnNewFile">＋ File</button>
+          <button class="tool-btn" id="btnNewFolder">＋ Folder</button>
+          <button class="tool-btn" id="btnRefresh">⟳ Refresh</button>
+        </div>
+        <div class="files-list" id="filesList">
+          <div class="file-empty">Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings view -->
+    <section class="view" id="view-settings">
+      <div class="settings">
+        <h2>Settings</h2>
+        <p class="lead">Personalize your terminal experience.</p>
+
+        <div class="card">
+          <h3>Terminal appearance</h3>
+          <div class="field">
+            <div>
+              <label>Font size</label>
+              <div class="hint">Applies to newly opened terminals</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="range" id="setFontSize" min="10" max="22" step="1" value="14">
+              <span class="val" id="setFontSizeVal">14</span>
+            </div>
+          </div>
+          <div class="field">
+            <div><label>Cursor style</label></div>
+            <select id="setCursor">
+              <option value="block" selected>Block</option>
+              <option value="bar">Bar</option>
+              <option value="underline">Underline</option>
+            </select>
+          </div>
+          <div class="field">
+            <div><label>Cursor blink</label></div>
+            <select id="setBlink">
+              <option value="1" selected>On</option>
+              <option value="0">Off</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Session</h3>
+          <div class="field">
+            <div>
+              <label>Reset all terminals</label>
+              <div class="hint">Closes every open terminal and reconnects</div>
+            </div>
+            <button class="tool-btn" id="btnResetAll">Reset</button>
+          </div>
+          <div class="field">
+            <div>
+              <label>Sign out</label>
+              <div class="hint">You will need to enter the password again</div>
+            </div>
+            <button class="tool-btn danger" id="btnLogout2">Sign out</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Server info</h3>
+          <dl class="kv">
+            <dt>Service</dt>   <dd>Twin Terminal v2</dd>
+            <dt>Runtime</dt>   <dd>Python + aiohttp</dd>
+            <dt>Data dir</dt>  <dd>/data</dd>
+            <dt>Uptime</dt>    <dd id="setUptime">--</dd>
+            <dt>Traffic</dt>   <dd id="setTraffic">--</dd>
+            <dt>Month</dt>     <dd id="setMonth">--</dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<!-- ───────── File editor ───────── -->
+
+<div class="editor" id="editor">
+  <div class="editor-box">
+    <div class="editor-head">
+      <div class="editor-path" id="editorPath">/</div>
+      <div class="editor-actions">
+        <button class="tool-btn" id="editorClose">Close</button>
+        <button class="btn-primary" id="editorSave">Save</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <textarea id="editorArea" spellcheck="false" wrap="off"></textarea>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+
+<script>
+/* ─────────────────────────────────────────────
+   State
+   ───────────────────────────────────────────── */
+const S = {
+  password: '',
+  view: 'terminal',
+  terminals: new Map(),
+  activeId: null,
+  counter: 0,
+  currentPath: '/',
+  editingPath: null,
+  font: { size: 14, cursor: 'block', blink: true },
+};
+
+const MAX_TERMINALS = 8;
+const XTERM_THEME = {
+  background:'#08080d', foreground:'#e6e6f0', cursor:'#a855f7', cursorAccent:'#08080d',
+  selectionBackground:'rgba(168,85,247,.30)',
+  black:'#101018', red:'#fb7185', green:'#4ade80', yellow:'#facc15',
+  blue:'#60a5fa', magenta:'#c084fc', cyan:'#22d3ee', white:'#f4f4f5',
+  brightBlack:'#52525b', brightRed:'#fb7185', brightGreen:'#86efac',
+  brightYellow:'#fde68a', brightBlue:'#93c5fd', brightMagenta:'#d8b4fe',
+  brightCyan:'#67e8f9', brightWhite:'#ffffff',
+};
+
+/* ─────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+
+function toast(msg, isError = false) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('error', isError);
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function fmtBytes(n) {
+  if (n === null || n === undefined) return '--';
+  const units = ['B','KB','MB','GB','TB'];
+  let i = 0; let v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return v.toFixed(v >= 100 || i === 0 ? 0 : (v >= 10 ? 1 : 2)) + ' ' + units[i];
+}
+
+function fmtUptime(sec) {
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const parts = [];
+  if (d) parts.push(d + 'd');
+  if (h) parts.push(h + 'h');
+  parts.push(m + 'm');
+  return parts.join(' ');
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ─────────────────────────────────────────────
+   Login
+   ───────────────────────────────────────────── */
+async function doLogin() {
+  const pw = $('#password').value;
+  if (!pw) return;
+
+  const btn = $('#connectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  $('#error').classList.remove('show');
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!res.ok) throw new Error('bad');
+    S.password = pw;
+    $('#login').classList.add('hide');
+    $('#app').classList.add('show');
+    openTerminal();
+    loadStats();
+    startStatsLoop();
+  } catch (e) {
+    $('#error').classList.add('show');
+    $('#password').value = '';
+    $('#password').focus();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+
+$('#connectBtn').addEventListener('click', doLogin);
+$('#password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+/* ─────────────────────────────────────────────
+   Navigation
+   ───────────────────────────────────────────── */
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => switchView(el.dataset.view));
+});
+
+function switchView(name) {
+  S.view = name;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === name));
+  document.querySelectorAll('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + name));
+  if (window.innerWidth <= 760) $('#sidebar').classList.remove('open');
+
+  if (name === 'terminal') refitActiveTerminal();
+  if (name === 'files') loadFiles(S.currentPath);
+}
+
+$('#menuBtn').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
+
+/* ─────────────────────────────────────────────
+   Terminal tabs
+   ───────────────────────────────────────────── */
+function updateEmptyState() {
+  $('#termEmpty').style.display = S.terminals.size === 0 ? 'flex' : 'none';
+}
+
+function makeTerminalElement() {
+  const wrap = document.createElement('div');
+  wrap.className = 'term-wrap';
+  wrap.dataset.id = null; // set later
+  $('#terms').appendChild(wrap);
+  return wrap;
+}
+
+function openTerminal() {
+  if (S.terminals.size >= MAX_TERMINALS) {
+    toast(`Maximum ${MAX_TERMINALS} terminals`, true);
+    return;
+  }
+
+  const id = 't' + (++S.counter);
+  const title = 'Terminal ' + S.counter;
+
+  // Tab
+  const tab = document.createElement('div');
+  tab.className = 'tab';
+  tab.dataset.id = id;
+  tab.innerHTML = `<span class="tdot"></span><span class="tab-title"></span><span class="tab-close">×</span>`;
+  tab.querySelector('.tab-title').textContent = title;
+  $('#tabsBar').insertBefore(tab, $('#tabNew'));
+
+  // Container
+  const wrap = makeTerminalElement();
+  wrap.dataset.id = id;
+  wrap.classList.add('active');
+  document.querySelectorAll('.term-wrap').forEach(el => {
+    if (el !== wrap) el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  // Xterm
+  const term = new Terminal({
+    cursorBlink: S.font.blink,
+    cursorStyle: S.font.cursor,
+    fontFamily: "'JetBrains Mono','Fira Code',ui-monospace,monospace",
+    fontSize: S.font.size,
+    lineHeight: 1.2,
+    allowProposedApi: true,
+    scrollback: 2000,
+    theme: XTERM_THEME,
+  });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(wrap);
+
+  const st = {
+    id, title, term, fit, wrap, tab,
+    ws: null,
+    ready: false,
+  };
+  S.terminals.set(id, st);
+  S.activeId = id;
+
+  // Banner
+  term.write(
+    "\x1b[1;35m\r\n  ⚡ Twin Terminal\x1b[0m\r\n" +
+    "\x1b[90m  Secure Linux Web Terminal\x1b[0m\r\n\r\n"
+  );
+
+  // WebSocket
+  connectWS(st);
+
+  // Input
+  term.onData(data => {
+    if (st.ws && st.ws.readyState === WebSocket.OPEN && st.ready) {
+      st.ws.send(JSON.stringify({ type: 'input', data }));
+    }
+  });
+  term.onResize(() => sendResize(st));
+
+  // Tab events
+  tab.addEventListener('click', e => {
+    if (e.target.classList.contains('tab-close')) {
+      closeTerminal(id);
+    } else {
+      activateTerminal(id);
+    }
+  });
+
+  // Fit after layout
+  requestAnimationFrame(() => {
+    try { fit.fit(); sendResize(st); } catch (e) {}
+    term.focus();
+  });
+
+  updateEmptyState();
+}
+
+function activateTerminal(id) {
+  const st = S.terminals.get(id);
+  if (!st) return;
+  S.activeId = id;
+
+  document.querySelectorAll('.term-wrap').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  requestAnimationFrame(() => {
+    try { st.fit.fit(); sendResize(st); } catch (e) {}
+    st.term.focus();
+  });
+}
+
+function closeTerminal(id) {
+  const st = S.terminals.get(id);
+  if (!st) return;
+
+  try { st.ws && st.ws.close(); } catch (e) {}
+  try { st.term.dispose(); } catch (e) {}
+  st.wrap.remove();
+  st.tab.remove();
+  S.terminals.delete(id);
+
+  if (S.activeId === id) {
+    const next = S.terminals.keys().next();
+    if (!next.done) activateTerminal(next.value);
+    else S.activeId = null;
+  }
+  updateEmptyState();
+}
+
+function refitActiveTerminal() {
+  const st = S.terminals.get(S.activeId);
+  if (!st) return;
+  requestAnimationFrame(() => {
+    try { st.fit.fit(); sendResize(st); } catch (e) {}
+  });
+}
+
+function connectWS(st) {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}/ws`);
+  ws.binaryType = 'arraybuffer';
+  st.ws = ws;
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'auth', password: S.password }));
+  };
+
+  ws.onmessage = ev => {
+    if (typeof ev.data === 'string') {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'auth') {
+          if (msg.success) {
+            st.ready = true;
+            st.tab.classList.add('ready');
+            setConnected(true);
+            sendResize(st);
+            st.term.focus();
+          } else {
+            st.tab.classList.add('error');
+            st.term.write('\r\n\x1b[31mAuthentication failed.\x1b[0m\r\n');
+          }
+          return;
+        }
+      } catch (e) {}
+      st.term.write(ev.data);
+    } else {
+      st.term.write(new Uint8Array(ev.data));
+    }
+  };
+
+  ws.onclose = () => {
+    if (st.ready) {
+      st.term.write('\r\n\x1b[33m[disconnected]\x1b[0m\r\n');
+    }
+    st.ready = false;
+    st.tab.classList.remove('ready');
+    setConnected(false);
+  };
+
+  ws.onerror = () => {};
+}
+
+function sendResize(st) {
+  if (st.ws && st.ws.readyState === WebSocket.OPEN && st.ready) {
+    st.ws.send(JSON.stringify({
+      type: 'resize',
+      rows: st.term.rows,
+      cols: st.term.cols,
+    }));
+  }
+}
+
+function setConnected(ok) {
+  const pill = $('#conn-pill');
+  pill.classList.toggle('off', !ok);
+  pill.querySelector('span:last-child').textContent = ok ? 'Connected' : 'Offline';
+}
+
+$('#tabNew').addEventListener('click', openTerminal);
+$('#termEmptyNew').addEventListener('click', openTerminal);
+
+/* ─────────────────────────────────────────────
+   Stats
+   ───────────────────────────────────────────── */
+let statsTimer = null;
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats');
+    const data = await res.json();
+
+    // RAM
+    const mu = data.memory.used;
+    const ml = data.memory.limit;
+    $('#s-mem').textContent = ml > 0 ? `${fmtBytes(mu)} / ${fmtBytes(ml)}` : fmtBytes(mu);
+    const mp = ml > 0 ? Math.min(100, (mu / ml) * 100) : 0;
+    const memBar = $('#s-mem-bar');
+    memBar.querySelector('div').style.width = mp + '%';
+    memBar.classList.toggle('warn', mp >= 70 && mp < 90);
+    memBar.classList.toggle('danger', mp >= 90);
+
+    // CPU
+    const cp = Math.max(0, data.cpu.percent);
+    $('#s-cpu').textContent = cp.toFixed(1) + '%';
+    const cpuBar = $('#s-cpu-bar');
+    cpuBar.querySelector('div').style.width = Math.min(100, cp) + '%';
+    cpuBar.classList.toggle('warn', cp >= 60 && cp < 85);
+    cpuBar.classList.toggle('danger', cp >= 85);
+
+    // Traffic
+    const t = data.traffic;
+    $('#s-tr').textContent = `${fmtBytes(t.used)} / ${fmtBytes(t.limit)}`;
+    const tp = t.limit > 0 ? Math.min(100, (t.used / t.limit) * 100) : 0;
+    const trBar = $('#s-tr-bar');
+    trBar.querySelector('div').style.width = tp + '%';
+    trBar.classList.toggle('warn', tp >= 70 && tp < 90);
+    trBar.classList.toggle('danger', tp >= 90);
+
+    // Settings panel
+    $('#setUptime').textContent = fmtUptime(data.uptime);
+    $('#setTraffic').textContent = `${fmtBytes(t.used)} / ${fmtBytes(t.limit)}`;
+    $('#setMonth').textContent = t.month;
+  } catch (e) {}
+}
+
+function startStatsLoop() {
+  if (statsTimer) return;
+  statsTimer = setInterval(loadStats, 5000);
+}
+
+/* ─────────────────────────────────────────────
+   Files
+   ───────────────────────────────────────────── */
+
+async function loadFiles(path) {
+  S.currentPath = path;
+  $('#hdr-path').textContent = path;
+
+  const list = $('#filesList');
+  list.innerHTML = '<div class="file-empty">Loading…</div>';
+
+  try {
+    const res = await fetch('/api/files/list?path=' + encodeURIComponent(path));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    renderCrumbs(data.path);
+    renderFiles(data.items);
+  } catch (e) {
+    list.innerHTML = `<div class="file-empty">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderCrumbs(path) {
+  const el = $('#crumbs');
+  el.innerHTML = '';
+  const parts = path.split('/').filter(Boolean);
+
+  const rootCrumb = document.createElement('span');
+  rootCrumb.className = 'crumb';
+  rootCrumb.textContent = '/';
+  rootCrumb.addEventListener('click', () => loadFiles('/'));
+  el.appendChild(rootCrumb);
+
+  let acc = '';
+  parts.forEach(p => {
+    acc += '/' + p;
+    const sep = document.createElement('span');
+    sep.className = 'crumb-sep';
+    sep.textContent = '›';
+    el.appendChild(sep);
+
+    const c = document.createElement('span');
+    c.className = 'crumb';
+    c.textContent = p;
+    const target = acc;
+    c.addEventListener('click', () => loadFiles(target));
+    el.appendChild(c);
+  });
+}
+
+function renderFiles(items) {
+  const list = $('#filesList');
+  list.innerHTML = '';
+
+  if (!items.length) {
+    list.innerHTML = '<div class="file-empty">This folder is empty</div>';
+    return;
+  }
+
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'file-row';
+
+    const icon = it.isDir ? '📁' : fileIcon(it.name);
+    const size = it.isDir ? '—' : fmtBytes(it.size);
+    const mtime = new Date(it.mtime * 1000).toLocaleDateString();
+
+    row.innerHTML = `
+      <div class="fname"><span class="ficon">${icon}</span><span>${escapeHtml(it.name)}</span></div>
+      <div class="fsize">${size}</div>
+      <div class="fmtime">${mtime}</div>
+      <div class="fdel" title="Delete">✕</div>
+    `;
+
+    row.addEventListener('click', e => {
+      if (e.target.classList.contains('fdel')) {
+        e.stopPropagation();
+        deleteEntry(it);
+        return;
+      }
+      if (it.isDir) loadFiles(it.path);
+      else openEditor(it.path);
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function fileIcon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = {
+    py:'🐍', js:'🟨', ts:'🟦', json:'📦', md:'📝', txt:'📄',
+    sh:'⚙️', html:'🌐', css:'🎨', yml:'⚙️', yaml:'⚙️',
+    png:'🖼️', jpg:'🖼️', jpeg:'🖼️', gif:'🖼️', svg:'🖼️',
+    zip:'🗜️', tar:'🗜️', gz:'🗜️', log:'📋',
+  };
+  return map[ext] || '📄';
+}
+
+async function deleteEntry(item) {
+  if (!confirm(`Delete "${item.name}"?`)) return;
+  try {
+    const res = await fetch('/api/files/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: item.path }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    toast('Deleted');
+    loadFiles(S.currentPath);
+  } catch (e) {
+    toast('Delete failed: ' + e.message, true);
+  }
+}
+
+$('#btnRefresh').addEventListener('click', () => loadFiles(S.currentPath));
+
+$('#btnNewFile').addEventListener('click', async () => {
+  const name = prompt('New file name:');
+  if (!name) return;
+  const path = joinPath(S.currentPath, name);
+  try {
+    const res = await fetch('/api/files/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    toast('File created');
+    loadFiles(S.currentPath);
+  } catch (e) {
+    toast('Failed: ' + e.message, true);
+  }
+});
+
+$('#btnNewFolder').addEventListener('click', async () => {
+  const name = prompt('New folder name:');
+  if (!name) return;
+  const path = joinPath(S.currentPath, name);
+  try {
+    const res = await fetch('/api/files/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    toast('Folder created');
+    loadFiles(S.currentPath);
+  } catch (e) {
+    toast('Failed: ' + e.message, true);
+  }
+});
+
+function joinPath(base, name) {
+  if (base.endsWith('/')) return base + name;
+  return base + '/' + name;
+}
+
+/* ─────────────────────────────────────────────
+   Editor
+   ───────────────────────────────────────────── */
+
+async function openEditor(path) {
+  try {
+    const res = await fetch('/api/files/read?path=' + encodeURIComponent(path));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    S.editingPath = data.path;
+    $('#editorPath').textContent = data.path;
+    $('#editorArea').value = data.content;
+    $('#editor').classList.add('show');
+    setTimeout(() => $('#editorArea').focus(), 50);
+    if (data.binary) toast('File contains binary data — shown as text');
+  } catch (e) {
+    toast('Open failed: ' + e.message, true);
+  }
+}
+
+$('#editorClose').addEventListener('click', () => {
+  $('#editor').classList.remove('show');
+  S.editingPath = null;
+});
+
+$('#editorSave').addEventListener('click', async () => {
+  if (!S.editingPath) return;
+  try {
+    const res = await fetch('/api/files/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: S.editingPath,
+        content: $('#editorArea').value,
+      }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    toast('Saved');
+  } catch (e) {
+    toast('Save failed: ' + e.message, true);
+  }
+});
+
+$('#editor').addEventListener('click', e => {
+  if (e.target.id === 'editor') $('#editorClose').click();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('#editor').classList.contains('show')) {
+    $('#editorClose').click();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if ($('#editor').classList.contains('show')) {
+      e.preventDefault();
+      $('#editorSave').click();
+    }
+  }
+});
+
+/* ─────────────────────────────────────────────
+   Settings
+   ───────────────────────────────────────────── */
+
+$('#setFontSize').addEventListener('input', e => {
+  const v = parseInt(e.target.value, 10);
+  S.font.size = v;
+  $('#setFontSizeVal').textContent = v;
+  S.terminals.forEach(st => { try { st.term.options.fontSize = v; st.fit.fit(); } catch (er) {} });
+});
+
+$('#setCursor').addEventListener('change', e => {
+  S.font.cursor = e.target.value;
+  S.terminals.forEach(st => { try { st.term.options.cursorStyle = e.target.value; } catch (er) {} });
+});
+
+$('#setBlink').addEventListener('change', e => {
+  const on = e.target.value === '1';
+  S.font.blink = on;
+  S.terminals.forEach(st => { try { st.term.options.cursorBlink = on; } catch (er) {} });
+});
+
+$('#btnResetAll').addEventListener('click', () => {
+  if (!confirm('Close all terminals and start over?')) return;
+  Array.from(S.terminals.keys()).forEach(id => closeTerminal(id));
+  openTerminal();
+  toast('Terminals reset');
+});
+
+function logout() {
+  Array.from(S.terminals.keys()).forEach(id => closeTerminal(id));
+  S.password = '';
+  S.terminals.clear();
+  S.activeId = null;
+  S.counter = 0;
+  $('#app').classList.remove('show');
+  $('#login').classList.remove('hide');
+  $('#password').value = '';
+  $('#password').focus();
+  if (statsTimer) { clearInterval(statsTimer); statsTimer = null; }
+}
+
+$('#logoutBtn').addEventListener('click', () => { if (confirm('Sign out?')) logout(); });
+$('#btnLogout2').addEventListener('click', () => { if (confirm('Sign out?')) logout(); });
+
+/* ─────────────────────────────────────────────
+   Window
+   ───────────────────────────────────────────── */
+window.addEventListener('resize', () => {
+  if (S.view === 'terminal') refitActiveTerminal();
+});
+
+window.addEventListener('beforeunload', () => {
+  S.terminals.forEach(st => { try { st.ws && st.ws.close(); } catch (e) {} });
+});
+</script>
+
+</body>
+</html>
