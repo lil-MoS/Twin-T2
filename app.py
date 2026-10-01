@@ -102,10 +102,6 @@ async def traffic_flusher():
         traffic.save()
 
 
-async def on_shutdown(app):
-    traffic.save()
-
-
 # ─────────────────────────────────────────────
 # CPU tracker (cgroup v2, then fallback)
 # ─────────────────────────────────────────────
@@ -680,13 +676,27 @@ app.router.add_post("/api/files/create", api_files_create)
 app.router.add_post("/api/files/delete", api_files_delete)
 app.router.add_post("/api/files/rename", api_files_rename)
 
-app.on_startup.append(lambda a: asyncio.create_task(traffic_flusher()))
-app.on_shutdown.append(on_shutdown)
+
+# ⬇⬇⬇  این دو تا تابع async هستن، پس aiohttp اونا رو await می‌کنه  ⬇⬇⬇
+# ولی چون خودشون بلافاصله return می‌کنن (فقط task می‌سازن)، startup بلاک نمی‌شه
+
+async def _on_startup(app):
+    asyncio.create_task(traffic_flusher())
+    print(f"✅ Twin Terminal ready on 0.0.0.0:{PORT}", flush=True)
+
+
+async def _on_shutdown(app):
+    traffic.save()
+    print("👋 shutting down", flush=True)
+
+
+app.on_startup.append(_on_startup)
+app.on_shutdown.append(_on_shutdown)
 
 
 if __name__ == "__main__":
-    print("╭──────────────────────────────────────╮")
-    print("│        ⚡ TWIN TERMINAL  v2          │")
-    print("╰──────────────────────────────────────╯")
-    print(f"Listening on 0.0.0.0:{PORT}")
+    print("╭──────────────────────────────────────╮", flush=True)
+    print("│        ⚡ TWIN TERMINAL  v2          │", flush=True)
+    print("╰──────────────────────────────────────╯", flush=True)
+    print(f"Listening on 0.0.0.0:{PORT}", flush=True)
     web.run_app(app, host="0.0.0.0", port=PORT, access_log=None)
